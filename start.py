@@ -6,7 +6,6 @@ import subprocess
 import time
 import json
 import re
-import urllib.request
 from pathlib import Path
 from typing import Dict, List, Tuple
 import argparse
@@ -47,7 +46,6 @@ class DockerComposeLauncher:
             "compose": IDLE,
             "health": IDLE,
             "post_start": IDLE,
-            "web": IDLE,
         }
 
         self.services: List[str] = []
@@ -90,7 +88,6 @@ class DockerComposeLauncher:
 
         print(f"{icon(self.sections['health'])} Health Check")
         print(f"{icon(self.sections['post_start'])} Post-Start Tasks")
-        print(f"{icon(self.sections['web'])} Web App Reachability")
         print("")
 
         if self.services:
@@ -344,16 +341,6 @@ class DockerComposeLauncher:
 
         return False
 
-    def check_web(self) -> bool:
-        for _ in range(30):
-            try:
-                with urllib.request.urlopen(f"{self.app_url}/health/", timeout=2) as r:
-                    if r.status == 200:
-                        return True
-            except:
-                time.sleep(1)
-        return False
-
     def cleanup(self):
         for k in self.loaded_secrets:
             os.environ.pop(k, None)
@@ -439,15 +426,6 @@ class DockerComposeLauncher:
             else:
                 self.sections["post_start"] = OK
             
-            # Web
-            self.sections["web"] = RUNNING
-            self.render()
-            if not self.check_web():
-                self.sections["web"] = ERROR
-                self.render("Web application did not become reachable")
-                sys.exit(1)
-
-            self.sections["web"] = OK
             self.render()
 
             print("\n🎉 Environment ready")

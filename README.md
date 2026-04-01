@@ -1,6 +1,6 @@
-# 🚀 Decrypter Orchestrator
+# 🚀 Decrypter Orchestrator for Docker Compose
 
-A fully containerized multi-tool for securely managing SOPS encryption and safely deploying multi-container projects out of the box.
+A fully containerized multi-tool for securely managing SOPS encryption and safely deploying Docker Compose multi-container projects out of the box.
 
 Because the tool runs entirely via Docker, you do not need to repeatedly install `sops`, `age`, Python, or Docker Compose plugins on your host system.
 
@@ -104,5 +104,6 @@ export SOPS_AGE_KEY="AGE-SECRET-KEY-..."
 
 ## 📜 Version History
 
+- **v1.0.2** - Shifted core target pattern to Docker Compose (`:compose` tag default). Removed container-internal web reachability checks in favor of native health states.
 - **v1.0.1** - Added MIT License, detailed project `.gitignore`, and clarified multi-platform Windows (`.ps1`) usage.
 - **v1.0.0** - Initial release: Core orchestration for SOPS age encryption and Docker deployment setups.
