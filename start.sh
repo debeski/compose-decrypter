@@ -1,0 +1,6 @@
+#!/bin/bash
+docker run -it --rm \
+  -v "$(pwd)":"$(pwd)" \
+  -w "$(pwd)" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  debeski/decrypter:latest "$@"

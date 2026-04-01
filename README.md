@@ -1,0 +1,92 @@
+# 🚀 Decrypter Orchestrator
+
+A fully containerized multi-tool for securely managing SOPS encryption and safely deploying multi-container projects out of the box.
+
+Because the tool runs entirely via Docker, you do not need to repeatedly install `sops`, `age`, Python, or Docker Compose plugins on your host system.
+
+***
+
+## 🛠 Compilation (Global Setup)
+If `start.py` receives an update or an improvement, rebuild the image from this directory to bump the generic target for all your projects.
+
+```bash
+# Basic setup - tagged initial release 
+docker build -t username/decrypter:1.0.0 .
+docker tag username/decrypter:1.0.0 username/decrypter:latest
+
+# If modifications to start.py have been done 
+docker build -t username/decrypter:1.0.1 .
+docker tag username/decrypter:1.0.1 username/decrypter:latest
+```
+
+***
+
+## 🔒 Managing Secrets (Encryption Mode)
+
+The image includes `age` and `sops` out of the box, offering simple router shortcuts to natively encrypt your `.env` files straight from the wrapper script.
+
+### 1. Generating a Key
+If you don't have an `age` key yet, generate one easily. The output will automatically map to your host's project folder under `.secrets/.key`.
+```bash
+./start.sh keygen
+```
+> [!WARNING]
+> Keep your `.key` file perfectly secure! It contains the private key string which is absolutely required to boot your server environments. Do not commit this to Git!
+
+### 2. Encrypting the Environment File
+Create your raw environment file at `.secrets/.env` (no quotes around values, empty lines, or spaces inside definitions!). Then extract your `PUBLIC_KEY` from your `.key` file and push it through the orchestrator.
+
+**Linux/macOS:**
+```bash
+PUBLIC_KEY=$(age-keygen -y .secrets/.key)
+./start.sh encrypt "$PUBLIC_KEY"
+```
+
+**Windows PowerShell:**
+```powershell
+$PUBLIC_KEY = age-keygen -y .secrets/.key
+./start.ps1 encrypt "$PUBLIC_KEY"
+```
+
+This will automatically securely wrap your raw `.secrets/.env` into an encrypted `secrets.enc` file sitting safely in your project directory.
+
+### 3. Decrypting to Edit
+If you ever want to update an existing `secrets.enc` file back into `.secrets/.env` to modify it, you just need to pass your private key to the decrypt mode:
+
+**Linux/macOS:**
+```bash
+./start.sh decrypt "AGE-SECRET-KEY-..."
+```
+
+**Windows PowerShell:**
+```powershell
+./start.ps1 decrypt "AGE-SECRET-KEY-..."
+```
+
+> [!TIP]
+> Need advanced SOPS interactions? You can run any raw SOPS command via the wrapper: `./start.sh sops -d secrets.enc` 
+
+***
+
+## 🚀 App-Update Deployment (Deploy Mode)
+
+Once your `secrets.enc` is ready and your project's `compose.yml` is populated, starting the environment using the native Deploy orchestrator is trivial.
+
+Provide your private key (`SOPS_AGE_KEY`) directly to the shell wrapper. The wrapper perfectly forwards your CLI flags (`-sd`, `-mm`, `-k`) directly to the internal python orchestration script.
+
+**Option A: Command-line Flags (Recommended):**
+```bash
+./start.sh -k "AGE-SECRET-KEY-10x..." ...
+```
+
+**Option B: Environmental Exposure:**
+```bash
+export SOPS_AGE_KEY="AGE-SECRET-KEY-..."
+./start.sh -mm
+```
+
+### What happens under the hood?
+1. The container mounts natively and identically.
+2. It decrypts `secrets.enc` instantly in memory (never written to disk)
+3. It spins up the `db`, `redis`, and your internal services across the host system's docker network.
+4. It conducts health checks and initiates internal database migrations via `--make-migrations` arguments transparently!
