@@ -14,6 +14,12 @@ To use this orchestrator in another project, **you do not need to clone this ent
 
 Simply grab the `start.sh` (or `start.ps1`) file, drop it into the root directory of your target project, and you're good to go! The script acts as a portable, standalone entrypoint that automatically pulls and interacts with the pre-built Docker environment.
 
+### Command Surface
+Decrypter has two command layers:
+
+- **Entrypoint shortcuts**: `keygen`, `encrypt`, `decrypt`, and `sops` are handled by `entrypoint.sh` before the Python orchestrator starts. These are convenience commands for common fixed-path secret operations.
+- **Orchestrator flags**: options such as `--encrypt`, `--decrypt`, `--down`, `-u`, `-d`, and `-f` are parsed by `start.py`. Use these when you need deployment behavior or configurable encrypt/decrypt input and output paths.
+
 ***
 ## 🛠 Compilation (Global Setup)
 If `start.py` receives an update or an improvement, rebuild the image from this directory to bump the generic target for all your projects.
@@ -31,9 +37,9 @@ docker build -t debeski/decrypter:compose .
 
 ***
 
-## 🔒 Managing Secrets (Encryption Mode)
+## 🔒 Managing Secrets (Entrypoint Shortcuts)
 
-The image includes `age` and `sops` out of the box, offering simple router shortcuts to natively encrypt your `.env` files straight from the wrapper script.
+The image includes `age` and `sops` out of the box, offering simple entrypoint shortcuts to natively encrypt your `.env` files straight from the wrapper script.
 
 ### 1. Generating a Key
 If you don't have an `age` key yet, generate one easily. The output will automatically map to your host's project folder under `.secrets/.key`.
@@ -58,10 +64,10 @@ $PUBLIC_KEY = age-keygen -y .secrets/.key
 ./start.ps1 encrypt "$PUBLIC_KEY"
 ```
 
-This will automatically securely wrap your raw `.secrets/.env` into an encrypted `secrets.enc` file sitting safely in your project directory.
+This shortcut wraps `.secrets/.env` into `secrets.enc`.
 
 ### 3. Decrypting to Edit
-If you ever want to update an existing `secrets.enc` file back into `.secrets/.env` to modify it, you just need to pass your private key to the decrypt mode:
+If you ever want to update an existing `secrets.enc` file back into `.secrets/.env` to modify it, pass your private key to the shortcut:
 
 **Linux/macOS:**
 ```bash
@@ -78,11 +84,11 @@ If you ever want to update an existing `secrets.enc` file back into `.secrets/.e
 
 ***
 
-## 🚀 App-Update Deployment (Deploy Mode)
+## 🚀 App-Update Deployment (Orchestrator Mode)
 
 Once your `secrets.enc` is ready and your project's `compose.yml` is populated, starting the environment using the native Deploy orchestrator is trivial.
 
-Provide your private key (`SOPS_AGE_KEY`) directly to the shell wrapper. The wrapper perfectly forwards your CLI flags (`-sd`, `-mm`, `-k`, `-u`) directly to the internal python orchestration script.
+Provide your private key (`SOPS_AGE_KEY`) directly to the shell wrapper. Unknown entrypoint commands and all flags are forwarded to the internal Python orchestration script.
 
 **Option A: Command-line Flags (Recommended):**
 ```bash
@@ -94,6 +100,29 @@ Provide your private key (`SOPS_AGE_KEY`) directly to the shell wrapper. The wra
 export SOPS_AGE_KEY="AGE-SECRET-KEY-..."
 ./start.sh -mm
 ```
+
+### CLI Reference
+
+| Argument | Meaning |
+| --- | --- |
+| `-h`, `--help` | Show CLI help and exit. |
+| `-k`, `--key` | AGE private key for decrypt/deploy, or AGE public key for `--encrypt`. |
+| positional key | Optional AGE key alternative to `-k`. |
+| `-f`, `--file` | Use an alternate Compose file instead of `compose.yml`. |
+| `-d`, `--dev` | Development mode: use `compose.yml` plus `compose.dev.yml`, read `.secrets/.env` directly, and skip decryption. |
+| `-sd`, `--skip-decrypt` | Read `.secrets/.env` directly without decrypting `secrets.enc`. |
+| `-nm`, `--no-migrate` | Skip post-start migration tasks. |
+| `-mm`, `--make-migrations` | Force migration generation during post-start migrator commands. |
+| `-a`, `--app` | Pass a target app name to the migrator post-start command. |
+| `-u`, `--update [SERVICE]` | Run `docker compose pull` before startup; optionally pull only one service. |
+| `-b`, `--build` | Start Compose with `docker compose up -d --build`. |
+| `--down` | Run `docker compose down` instead of startup. |
+| `-v`, `--volumes` | Remove volumes when used with `--down`. |
+| `--encrypt` | Encrypt a plaintext dotenv file and exit without starting containers. |
+| `--decrypt` | Decrypt an encrypted dotenv file and exit without starting containers. |
+| `-i`, `--input` | Input path for `--encrypt` or `--decrypt`. |
+| `-o`, `--output` | Output path for `--encrypt` or `--decrypt`. |
+| `--version` | Print the bundled Decrypter version and exit. |
 
 ### 🔄 Image Updates
 If you need to ensure your local images are in sync with the remote registry before starting, you can use the `-u` or `--update` flag. This will trigger a `docker compose pull` before the deployment begins.
@@ -149,7 +178,7 @@ export SOPS_AGE_PUBLIC_KEY="age1..."
 ./start.sh --encrypt
 ```
 
-### � Stopping Environment
+### Stopping Environment
 To stop and remove the running containers, use the `--down` flag:
 
 ```bash
@@ -173,4 +202,3 @@ To also remove volumes (equivalent to `docker compose down -v`), add the `-v` fl
 - Compose build/pull activity and detailed health check states are streamed into the launcher UI as a live single-line status instead of looking stalled during long image operations or waiting periods.
 - Every launched service automatically receives `DECRYPTER_VERSION` as a runtime environment variable. Decrypter also exports the same variable to Compose itself, so projects can reference it for interpolation without adding a separate host env var.
 - The launcher reads its version from the bundled `VERSION` file in the image, so update that file when cutting a new release.
-

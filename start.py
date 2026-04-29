@@ -98,6 +98,7 @@ class DockerComposeLauncher:
         self.last_runtime_diagnostic = ""
         self.last_render_line_count = 0
         self.compose_runtime_override: Optional[Path] = None
+        self.build_images = False
 
         self.sections = {
             "secrets": IDLE,
@@ -135,6 +136,8 @@ class DockerComposeLauncher:
             active_flags.append(f"📂  CUSTOM COMPOSE")
         if self.target_app:
             active_flags.append(f"🎯  TARGET APP")
+        if self.build_images:
+            active_flags.append("\033[96m🏗️  FORCE BUILD\033[0m")
         if active_flags:
             lines.append("  •  ".join(active_flags))
         lines.extend(
@@ -218,6 +221,7 @@ class DockerComposeLauncher:
         parser.add_argument('-a', '--app', help='Target app for initialization (passed to migrator)')
         parser.add_argument('-sd', '--skip-decrypt', action='store_true', help='Bypass decryption and read .secrets/.env directly')
         parser.add_argument('-u', '--update', nargs='?', const=True, help='Force docker compose pull before starting')
+        parser.add_argument('-b', '--build', action='store_true', help='Force build of images before starting containers (--build)')
         parser.add_argument('--down', action='store_true', help='Run docker compose down instead of up')
         parser.add_argument('-v', '--volumes', action='store_true', help='Remove volumes when using --down')
         parser.add_argument('--decrypt', action='store_true', help='Decrypt an encrypted file and print to stdout')
@@ -329,6 +333,12 @@ class DockerComposeLauncher:
         elif self.dev_mode:
             # In dev mode, use both compose.yml and compose.dev.yml
             base_args.extend(["-f", "compose.yml", "-f", "compose.dev.yml"])
+        else:
+            base_args.extend(["-f", "compose.yml"])
+        
+        # DEBUG: Show which compose files are being used
+        print(f"DEBUG: compose_file={self.compose_file}, dev_mode={self.dev_mode}, base_args={base_args}")
+            
         if self.compose_runtime_override and self.compose_runtime_override.exists():
             base_args.extend(["-f", str(self.compose_runtime_override)])
         return base_args
@@ -732,10 +742,11 @@ class DockerComposeLauncher:
         except Exception as e:
             return False
 
-    def discover_services(self) -> bool:
+    def discover_services(self, silent: bool = False) -> bool:
         ok, out, err = self.run_docker_compose(["config", "--services"], timeout=10)
         if not ok:
-            self.last_runtime_diagnostic = self.build_failure_detail(out, err)
+            if not silent:
+                self.last_runtime_diagnostic = self.build_failure_detail(out, err)
             return False
         self.services = [s for s in out.splitlines() if s]
         self.service_state = {s: SERVICE_NOT_SEEN for s in self.services}
@@ -783,10 +794,20 @@ class DockerComposeLauncher:
         return True
 
     def launch_containers(self) -> Tuple[bool, str, str]:
+        # Ensure Dockerfile case is correct for Linux to prevent build context errors
+        if not os.path.exists("Dockerfile") and os.path.exists("dockerfile"):
+            try:
+                os.rename("dockerfile", "Dockerfile")
+            except OSError:
+                pass
+
         self.last_progress_text = ""
         self.last_progress_label = ""
+        up_args = ["up", "-d"]
+        if self.build_images:
+            up_args.append("--build")
         return self.run_docker_compose_streaming(
-            ["up", "-d"],
+            up_args,
             progress_callback=lambda line: self.emit_progress("Compose", line),
         )
 
@@ -878,7 +899,11 @@ class DockerComposeLauncher:
             # Dev mode implies skip_decrypt - read .secrets/.env directly
             self.skip_decrypt = args.skip_decrypt or self.dev_mode
             self.compose_file = args.file
+            # DEBUG: Verify flags are parsed correctly
+            if args.skip_decrypt and not args.dev:
+                print(f"DEBUG: skip_decrypt=True, dev_mode=False (compose_file={self.compose_file})")
             self.target_app = args.app
+            self.build_images = args.build
             if args.update:
                 self.update_images = True
                 if isinstance(args.update, str):
@@ -890,7 +915,8 @@ class DockerComposeLauncher:
 
             # Try to discover services early so the status row is available,
             # but keep going if compose config still depends on secrets.
-            self.discover_services()
+            # This may fail before secrets are loaded (e.g. image refs use env vars).
+            self.discover_services(silent=True)
 
             # Handle encrypt-only mode early
             if args.encrypt:

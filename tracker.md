@@ -18,6 +18,7 @@
 - `parse_args()` now treats `-d/--dev` as taking precedence over `-sd/--skip-decrypt`; if both are passed, the explicit skip-decrypt flag is ignored as redundant
 - Render rule: `-d/--dev` should show only the dev-mode banner; the bypass warning line is reserved for standalone `-sd/--skip-decrypt`
 - Render layout now groups boolean-style mode flags into one compact status bar line, while compose path / target app / migration info remain on separate lines
+- README.md now distinguishes entrypoint shortcuts (`keygen`, `encrypt`, `decrypt`, `sops`) from Python orchestrator flags (`--encrypt`, `--decrypt`, deployment flags) and includes the full `parse_args()` CLI surface
 
 ### Current Project Official Standards:
 - Use argparse for CLI argument handling
@@ -42,6 +43,8 @@
 
 ### Tasks:
 - Priority 1:
+  - [x] Clarify README.md command surface so bare `encrypt`/`decrypt` are documented as entrypoint shortcuts and `--encrypt`/`--decrypt` are documented as orchestrator flags
+  - [x] Add README.md CLI reference for the currently verified `start.py --help` arguments
   - [x] Stream `docker compose up -d` and `docker compose pull` progress so build-heavy services do not look stuck
   - [x] Keep streamed progress on a single overwritten terminal line so the launcher UI does not scroll
   - [x] Redraw the launcher panel in place so the header block does not repeat in terminals that preserve repaint history
@@ -64,12 +67,14 @@
   - [ ] Manually verify failure output for a container that exits with code 1 and for a failing `post_start` command
 
 - Completed Recently:
+  - [x] Resolved README CLI ambiguity around `decrypt` versus `--decrypt` and `encrypt` versus `--encrypt`
   - [x] Added docker compose down functionality with optional volume removal
   - [x] Added compose progress streaming and richer diagnostics in `start.py`
   - [x] Added automatic runtime version injection via generated compose override
 
 ### Tests:
 - Verified: `python -m compileall start.py`
+- Verified: `python start.py --help`
 - Recommended: manual Ctrl+C during compose startup to confirm the launcher exits with only the clean interrupt message
 - Recommended: manual run of `./start.sh` against a compose file that triggers image build output during `docker compose up -d`
 - Recommended: manual run of `./start.sh` followed by `docker compose exec <service> env | grep DECRYPTER_VERSION`
@@ -80,6 +85,7 @@
 - README.md: Build instructions now explicitly mention rebuilding the `debeski/decrypter:compose` tag used by the wrapper scripts
 - README.md: Added notes for live compose progress UI and case-insensitive / quoted `DEBUG_STATUS` parsing
 - README.md: Added automatic `DECRYPTER_VERSION` runtime injection note, documented `VERSION` as the source of truth, and version history updated to v1.0.7
+- README.md: Added Command Surface section and CLI Reference table generated from verified `start.py --help` behavior
 
 ## Part 2: Global
 ### Global Standard Helpers, Shortcuts, Info, etc.:
