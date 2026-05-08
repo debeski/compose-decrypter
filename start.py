@@ -338,7 +338,6 @@ class DockerComposeLauncher:
             base_args.extend(["-f", "compose.yml"])
         
         # DEBUG: Show which compose files are being used
-        print(f"DEBUG: compose_file={self.compose_file}, dev_mode={self.dev_mode}, base_args={base_args}")
             
         if self.compose_runtime_override and self.compose_runtime_override.exists():
             base_args.extend(["-f", str(self.compose_runtime_override)])

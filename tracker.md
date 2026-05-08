@@ -19,7 +19,7 @@
 - `parse_args()` now treats `-d/--dev` as taking precedence over `-sd/--skip-decrypt`; if both are passed, the explicit skip-decrypt flag is ignored as redundant
 - Render rule: `-d/--dev` should show only the dev-mode banner; the bypass warning line is reserved for standalone `-sd/--skip-decrypt`
 - Render layout now groups boolean-style mode flags into one compact status bar line, while compose path / target app / migration info remain on separate lines
-- README.md now distinguishes entrypoint shortcuts (`keygen`, `encrypt`, `decrypt`, `sops`) from Python orchestrator flags (`--encrypt`, `--decrypt`, deployment flags) and includes the full `parse_args()` CLI surface
+- README.md rewritten to be concise and creative with a "dim/minimalist" personality; focuses on core usage and minimal CLI surface.
 
 ### Current Project Official Standards:
 - Use argparse for CLI argument handling
@@ -97,8 +97,8 @@
 ### Docs:
 - README.md: Build instructions now explicitly mention rebuilding the `debeski/decrypter:compose` tag used by the wrapper scripts
 - README.md: Added notes for live compose progress UI and case-insensitive / quoted `DEBUG_STATUS` parsing
-- README.md: Added automatic `DECRYPTER_VERSION` runtime injection note, documented `VERSION` as the source of truth, and version history updated to v1.0.7
-- README.md: Added Command Surface section and CLI Reference table generated from verified `start.py --help` behavior
+- README.md: Simplified command surface documentation with a creative, "dim" tone.
+- README.md: Maintained CLI reference but condensed descriptions for brevity.
 
 ## Part 2: Global
 ### Global Standard Helpers, Shortcuts, Info, etc.:
@@ -139,3 +139,10 @@
 
 ### References:
 - Docker Compose CLI reference: https://docs.docker.com/engine/reference/commandline/compose_down/
+
+
+TODO by DeBeski: "DO NOT TOUCH"
+
+the --build arg needs improvement to account for all available build args in compose whether normal compose file or dev depending on the starting args.
+
+the current -sd and -d args are interfering somehow. when only -sd is called hoping for a skip decryption run with the rest behaving as usual with one compose.yml file and so on. instead it looks for a dev compose file at all times whether running -d or -sd. this needs to be looked into.
